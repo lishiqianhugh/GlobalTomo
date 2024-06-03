@@ -31,7 +31,6 @@ GlobalTomo/
 │   └── plot.py          # Visualization tools
 │
 ├── .gitignore           # Contents ignored by git
-├── index.html           # Website
 ├── infer.py             # Evaulation functions
 ├── inverse.py           # Inversion functions
 ├── LICENSE              # License
