@@ -2,7 +2,7 @@
 The first global dataset for physics-ML seismic wavefield modeling and full-waveform inversion
 
 <p align="left">
-    <a href='https://lishiqianhugh.github.io/GlobalTomo/'>
+    <a href='https://global-tomo.github.io/'>
     <img src='https://img.shields.io/badge/Web-Page-yellow?style=plastic&logo=Google%20chrome&logoColor=yellow' alt='Web'>
     </a>
     <a href='https://forms.gle/wC1mLULDmoQYpugo8'>
