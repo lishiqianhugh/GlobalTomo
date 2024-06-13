@@ -8,6 +8,9 @@ The first global dataset for physics-ML seismic wavefield modeling and full-wave
     <a href='https://forms.gle/wC1mLULDmoQYpugo8'>
     <img src='https://img.shields.io/badge/Data-Form-blue?style=plastic&logo=Google%20chrome&logoColor=blue' alt='Data'>
     </a>
+    <a href='https://vimeo.com/957588046'>
+      <img src='https://img.shields.io/badge/Demo-Vimeo-red?style=plastic&logo=Vimeo&logoColor=red' alt='Demo'>
+    </a>
 </p>
 
 <img src='./images/overview.jpg'>
