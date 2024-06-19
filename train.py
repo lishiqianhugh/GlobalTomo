@@ -59,8 +59,9 @@ def run(cfg: ModulusConfig) -> None:
     cfg.network_dir = f"outputs/{cfg.custom.name}"
     if not os.path.exists(cfg.network_dir):
         os.makedirs(cfg.network_dir)
-    # copy the original config.yaml into network dir
-    os.system(f"cp conf/config.yaml {cfg.network_dir}")
+    assert os.path.exists(f'conf/{cfg.custom.name}.yaml')
+    # copy the original config file into network dir
+    os.system(f"cp conf/{cfg.custom.name}.yaml {cfg.network_dir}/config.yaml")
     #############################################
     #    1. Config domain, PDEs, and network    #
     #############################################
@@ -125,9 +126,10 @@ def run(cfg: ModulusConfig) -> None:
         ] +
         [
             wave_net.make_node(name="wave_network"),
-        ] +
-        we.make_nodes(detach_names=["vs", "vp"]) +
-        bc.make_nodes()
+        ] 
+        # +
+        # we.make_nodes(detach_names=["vs", "vp"]) +
+        # bc.make_nodes()
     )
 
     #############################################
@@ -239,7 +241,7 @@ def run(cfg: ModulusConfig) -> None:
         else:
             source = None
         for m in val_models:
-            invar_seis_new, outvar_seis_new = load_seis(h5f, np.array([m]), pred_key, data_type, norm=False, baseline=None, test=True)
+            invar_seis_new, outvar_seis_new = load_seis(h5f, np.array([m]), pred_key, data_type, norm=True, baseline=None, transpose=False, test=True)
             seis_val = "Parallel_PointwiseValidator" if data_type == "point" else "PointwiseValidator" 
             seis = eval(seis_val)(
                 nodes=nodes,
@@ -249,7 +251,7 @@ def run(cfg: ModulusConfig) -> None:
                 requires_grad=True,
             )
             domain.add_validator(seis, f"seis_{m:04d}")
-        invar_seis, outvar_seis = load_seis(h5f, train_models, pred_key, data_type, norm=False, baseline=None, test=False)
+        invar_seis, outvar_seis = load_seis(h5f, train_models, pred_key, data_type, norm=True, baseline=None, transpose=False, test=False)
         # add seismogram constraint
         seis_constraint = "Parallel_DeepONetConstraint" if data_type == "point" else "DeepONetConstraint"
         seis = eval(seis_constraint).from_numpy(

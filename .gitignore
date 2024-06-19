@@ -1,0 +1,6 @@
+wandb/
+outputs/
+outerr/
+scripts/__pycache__
+data/
+vis*

@@ -21,7 +21,7 @@ from scripts.misc import (
     NormalizeT,
     NormalizeH,
 )
-from scripts.meta_info import except_models
+from scripts.meta_info import except_models, num_models
 
 from scripts.model import ModDeepONetArch
 from scripts.plot import velocity_plotter, WavePlotter, SeismoPlotter
@@ -37,8 +37,9 @@ np_dt = np.float32
 torch.set_default_dtype(tf_dt)
 
 wave_type = 'acoustic'
-output_type = 'seis'
-model_path = f"./outputs/checkpoints/{wave_type}/{output_type}_MLP/"
+output_type = 'wfslice'
+model_name = 'MLP'
+model_path = f"./outputs/{wave_type}_{output_type}_{model_name}/"
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 vis = False
 
@@ -108,7 +109,7 @@ def infer_wf(cfg: ModulusConfig) -> None:
     #############################################
     #               2. Load data                #
     #############################################
-    val_models = list(range(0, 1000))
+    val_models = list(range(0, int(0.1*num_models[wave_type])))
     val_models = list(set(val_models) - set(except_models[cfg.custom.data_dir.split('/')[-1]]))
     val_models = list(set(val_models) - set(except_models))
     times = [1,3,5,7,9,11,13]
@@ -123,7 +124,7 @@ def infer_wf(cfg: ModulusConfig) -> None:
         invar, outvar = load_wf(h5f, np.array([m]), times, cfg.custom.pred_key, data_type, test=True)
         invar, outvar = norm_data(invar, outvar)
         if 'elastic' in cfg.custom.data_dir:
-            source_h5f = h5py.File(os.path.join(cfg.custom.data_dir, 'Elastic_Sources.h5'), "r")
+            source_h5f = h5py.File(os.path.join(cfg.custom.data_dir, 'elastic_source.h5'), "r")
             source = source_h5f['source'][m] / 1e10
             source = torch.tensor(source, dtype=tf_dt, device=device).reshape(1, -1)
             invar['hin'] = torch.concat([invar['hin'], source], dim=1)
@@ -188,6 +189,11 @@ def infer_seis(cfg: ModulusConfig) -> None:
         wave_net = instantiate_arch(
             cfg=cfg.arch.fully_connected,
         )
+    elif cfg.custom.model == 'HighwayFourier':
+        data_type = 'vector'
+        wave_net = instantiate_arch(
+            cfg=cfg.arch.highway_fourier,
+        )
     wave_net.load_state_dict(torch.load(os.path.join(model_path, "wave_network.0.pth")))
     wave_net.eval()
     wave_net.to(device)
@@ -195,7 +201,7 @@ def infer_seis(cfg: ModulusConfig) -> None:
     #############################################
     #               2. Load data                #
     #############################################
-    val_models = list(range(0, 1000))
+    val_models = list(range(0, int(0.1*num_models[wave_type])))
     val_models = list(set(val_models) - set(except_models[cfg.custom.data_dir.split('/')[-1]]))
     all_loss = []
     all_R = []
@@ -212,7 +218,7 @@ def infer_seis(cfg: ModulusConfig) -> None:
             invar['h'] *= 0
         invar, outvar = norm_data(invar, outvar, data_type)
         if 'elastic' in cfg.custom.data_dir:
-            source_h5f = h5py.File(os.path.join(cfg.custom.data_dir, 'Elastic_Sources.h5'), "r")
+            source_h5f = h5py.File(os.path.join(cfg.custom.data_dir, 'elastic_source.h5'), "r")
             source = source_h5f['source'][m] / 1e10
             source = torch.tensor(source, dtype=tf_dt, device=device).reshape(1, -1)
             invar['hin'] = torch.concat([invar['hin'], source], dim=1)
@@ -278,7 +284,7 @@ def infer_velocity(cfg: ModulusConfig) -> None:
     #############################################
     #               2. Load data                #
     #############################################
-    val_models = list(range(0, 1000))
+    val_models = list(range(0, int(0.1*num_models[wave_type])))
     val_models = list(set(val_models) - set(except_models[cfg.custom.data_dir.split('/')[-1]]))
     all_r = []
     all_rl2 = []
@@ -361,7 +367,7 @@ def infer_wf_mean_model(wave_type):
     snapshots = [1,3,5,7,9,11,13]
     save_path = f'outputs/{wave_type}_mean_wf.npy'
     if not os.path.exists(save_path):
-        train_models = list(range(1000, 10000))
+        train_models = list(range(int(0.1*num_models[wave_type]), num_models[wave_type]))
         train_models = list(set(train_models) - set(except_models[data_dir.split('/')[-1]]))
         # load all wf
         all_wf = h5f['X'][train_models][:,snapshots]
@@ -371,7 +377,7 @@ def infer_wf_mean_model(wave_type):
     else:
         mean_wf = np.load(save_path)
     # evaluate the mean model
-    val_models = list(range(0, 1000))
+    val_models = list(range(0, int(0.1*num_models[wave_type])))
     val_models = list(set(val_models) - set(except_models[data_dir.split('/')[-1]]))
     times = [1,3,5,7,9,11,13]
     all_loss = []
@@ -398,7 +404,7 @@ def infer_seis_mean_model(wave_type):
     h5f = h5py.File(os.path.join(data_dir, seis_file), "r")
     save_path = f'outputs/{wave_type}_mean_seis.npy'
     if not os.path.exists(save_path):
-        train_models = list(range(1000, 10000))
+        train_models = list(range(int(0.1*num_models[wave_type]), num_models[wave_type]))
         train_models = list(set(train_models) - set(except_models[data_dir.split('/')[-1]]))
         # load all seis
         all_seis = h5f['disp'][:,:,:,2,:][train_models]
@@ -408,7 +414,7 @@ def infer_seis_mean_model(wave_type):
     else:
         mean_seis = np.load(save_path)
     # evaluate the mean model
-    val_models = list(range(0, 1000))
+    val_models = list(range(0, int(0.1*num_models[wave_type])))
     val_models = list(set(val_models) - set(except_models[data_dir.split('/')[-1]]))
     all_loss = []
     all_R = []
@@ -430,6 +436,6 @@ if __name__ == '__main__':
         infer_velocity()
     else:
         raise ValueError(f"output_type {output_type} is not supported")
-    infer_wf_mean_model(wave_type=wave_type)
-    infer_seis_mean_model(wave_type=wave_type)
+    # infer_wf_mean_model(wave_type=wave_type)
+    # infer_seis_mean_model(wave_type=wave_type)
     

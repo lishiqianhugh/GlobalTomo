@@ -1,0 +1,137 @@
+defaults :
+  - modulus_default
+  - /arch/fully_connected_cfg@arch.fully_connected
+  - /arch/fourier_cfg@arch.fourier
+  - /arch/fully_connected_cfg@arch.branch
+  - /arch/fully_connected_cfg@arch.trunk
+  - /arch/deeponet_cfg@arch.deeponet
+  - /arch/conv_fully_connected_cfg@arch.decoder
+  - /arch/fno_cfg@arch.fno
+  - scheduler: tf_exponential_lr
+  - optimizer: adam
+  - loss: sum
+  - _self_
+
+custom:
+  project: GlobalTomo
+  name: 'acoustic_wfslice_MLP'
+  model: 'MLP'  #  MLP / Fourier / HighwayFourier / FNO / ModDeepONet
+  data_dir: '../data/acoustic' # acoustic / elastic
+  wf_file: 'wf_slice_data.h5'
+  seis_file: 'seis_data.h5'
+  source_file: "elastic_source.h5"
+  interior_file: 'interior_slice_data.h5'
+  surface_file: 'surface_data.h5'
+  dim: 3
+  train_models: [0, 10]
+  val_models: [0,2]
+  train_shots:  [1,3,5,7,9,11,13]
+  val_shots: [1,3,5,7,9,11,13]
+  num_slices: 16 
+  pred_key: phi # acoustic: phi / elastic: disp_z
+  lazy_loading: false  # load data from the disk for every batch
+  wavefield: true
+  seismogram: false
+  velocity: false
+  interior: false
+  surface: false
+  weight_freesurface: 1e-4
+  weight_waveequation: 1e-4
+  weight_seis: 1e-3
+
+arch:
+  # MLP
+  fully_connected:
+    # # seismogram
+    # input_keys: ['hin', 405] # acoustic: 405 elastic: 1221
+    # output_keys: ['disp_z', 205350]
+    # nr_layers: 6
+    # layer_size: 500
+    # wavefield
+    input_keys: ['hin', 405]
+    output_keys: ['phi', 408576]
+    nr_layers: 6
+    layer_size: 500
+    # # velocity
+    # input_keys: ['disp_z', 205350]
+    # output_keys: ['h', 405]
+    # nr_layers: 6
+    # layer_size: 1000
+  # Fourier
+  fourier:
+    # seismogram
+    input_keys: ['hin', 405]
+    output_keys: ['disp_z', 205350]
+    nr_layers: 6
+    layer_size: 500
+    # # wavefield
+    # input_keys: ['hin', 405]
+    # output_keys: ['phi', 408576]
+    # nr_layers: 6
+    # layer_size: 500
+  # Highway Fourier
+  highway_fourier:
+    # seismogram
+    input_keys: ["hin", 405]
+    output_keys: ["disp_z", 205350]
+    nr_layers: 6
+    layer_size: 500
+    # # wavefield
+    # input_keys: ['hin', 405]
+    # output_keys: ['disp_z', 408576]
+    # nr_layers: 6
+    # layer_size: 500
+  # DeepONet
+  branch:
+    nr_layers: 6
+    layer_size: 600
+    input_keys: ['hin', 405]
+    output_keys: ['branch', 1000]
+  trunk:
+    nr_layers: 6
+    layer_size: 600
+    output_keys: ['trunk', 1000]
+  deeponet:
+    output_keys: disp_z # phi
+  # FNO
+  decoder:
+    input_keys: [z, 32]
+    output_keys: [phi, 4]
+    nr_layers: 4
+    layer_size: 32
+  fno:
+    input_keys: [hin, 4]
+    dimension: 3
+    nr_fno_layers: 6
+    fno_modes: 9
+    padding: 0
+
+jit: True
+cuda_graphs: True # Graphs does not work with network with used leaf node
+find_unused_parameters: False
+cuda_graph_warmup: 20
+
+scheduler:
+  decay_rate: 0.95
+  decay_steps: 1000
+
+save_filetypes : ""
+
+training:
+  rec_results_freq : 1000
+  rec_constraint_freq: 10000000
+  save_network_freq: 1000
+  max_steps : 20000
+  grad_agg_freq: 1
+  amp: True
+
+optimizer:
+  lr: 3e-4
+  betas: [0.9, 0.999]
+
+batch_size:
+  surface: 1
+  interior: 1
+  seismogram: 2
+  velocity: 2
+  wavefield: 2

@@ -127,7 +127,7 @@ def load_seis(h5f, model_ids, pred_key, data_type, norm=False, baseline=None, so
 
     # Prepare output variables based on prediction key
     key2idx = {'disp_x': 0, 'disp_y': 1, 'disp_z': 2}
-    outvar[pred_key] = disp[:,:,:,key2idx[pred_key],:] * 1e10
+    outvar[pred_key] = disp[:,:,:,key2idx[pred_key]:,:] * 1e10
 
     # Adjust baseline if necessary
     if baseline is not None:
@@ -136,11 +136,11 @@ def load_seis(h5f, model_ids, pred_key, data_type, norm=False, baseline=None, so
     # Normalize if requested
     if norm:
         max_value = np.max(np.abs(outvar[pred_key]), axis=-1)
-        outvar[pred_key] /= max_value[:, :, :, None]
+        outvar[pred_key] /= max_value[:, :, :, :, None]
 
-    # Transpose output to match dimensions (batch, time, width, height)
+    # Transpose output to match dimensions (batch, time, width, height, channels)
     if transpose:
-        outvar[pred_key] = outvar[pred_key].transpose(0, 3, 1, 2)
+        outvar[pred_key] = outvar[pred_key].transpose(0, 4, 1, 2, 3)
     
     invar['h'] = h5f['harmonics'][model_ids]
     if source is not None:
