@@ -38,8 +38,7 @@ def load_wf(h5f, model_ids, snapshot_ids, pred_key, data_type, source=None, test
         invar['x'] = coords[None, :, :, 0].repeat(len(model_ids), 0).reshape(len(model_ids), -1)  / 1e3 # b, 16*3648
         invar['y'] = coords[None, :, :, 1].repeat(len(model_ids), 0).reshape(len(model_ids), -1)  / 1e3 # b, 16*3648
         invar['z'] = coords[None, :, :, 2].repeat(len(model_ids), 0).reshape(len(model_ids), -1)  / 1e3 # b, 16*3648
-        time = np.array([0.0744022, 0.2740638, 0.4737254, 0.673387, 0.8730486, 1.0727102, 1.2723718, 
-                    1.4720334, 1.671695, 1.8713566, 2.0710182, 2.2706798, 2.4703414, 2.670003, 2.8696646])
+        time = h5f['timestep']
         invar['t'] = time[snapshot_ids][None, :].repeat(len(model_ids), axis=0)
  
     invar['h'] = h5f['harmonics'][model_ids]
@@ -61,8 +60,7 @@ def load_wf(h5f, model_ids, snapshot_ids, pred_key, data_type, source=None, test
         invar['x'] = coords[None, :, :, 0].repeat(len(model_ids), 0).reshape(len(model_ids), -1)  / 1e3 # b, 16*3648
         invar['y'] = coords[None, :, :, 1].repeat(len(model_ids), 0).reshape(len(model_ids), -1)  / 1e3 # b, 16*3648
         invar['z'] = coords[None, :, :, 2].repeat(len(model_ids), 0).reshape(len(model_ids), -1)  / 1e3 # b, 16*3648
-        time = np.array([0.0744022, 0.2740638, 0.4737254, 0.673387, 0.8730486, 1.0727102, 1.2723718, 
-                    1.4720334, 1.671695, 1.8713566, 2.0710182, 2.2706798, 2.4703414, 2.670003, 2.8696646])
+        time = h5f['timestep']
         invar['t'] = time[snapshot_ids][None, :].repeat(len(model_ids), axis=0) # b, 4
         for key in invar.keys():
             if key in ['h']:
@@ -108,13 +106,13 @@ def load_seis(h5f, model_ids, pred_key, data_type, norm=False, baseline=None, so
     outvar = {}
 
     # Load basic data
-    sph_coords = h5f["station_coords_spherical"][model_ids]
-    time = h5f["time"][model_ids][:, time_range[0]:time_range[1]]
+    sph_coords = h5f["station_coords_spherical"][:][None,:,:,:].repeat(len(model_ids), axis=0)
+    time = h5f["time"][time_range[0]:time_range[1]][None,:].repeat(len(model_ids), axis=0)
     disp = h5f["disp"][model_ids][:,:,:,:,time_range[0]:time_range[1]]
 
     # Handle test-specific data
     if test:
-        car_coords = h5f["station_coords_cartesian"][model_ids]
+        car_coords = h5f["station_coords_cartesian"][:][None,:,:,:].repeat(len(model_ids), axis=0)
         invar.update({
             "x": car_coords[:,:,:,0] / 1e3,  # (b, 37, 37)
             "y": car_coords[:,:,:,1] / 1e3,  # (b, 37, 37)

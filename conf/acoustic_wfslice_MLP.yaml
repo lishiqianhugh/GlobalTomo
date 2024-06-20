@@ -17,11 +17,11 @@ custom:
   name: 'acoustic_wfslice_MLP'
   model: 'MLP'  #  MLP / Fourier / HighwayFourier / FNO / ModDeepONet
   data_dir: '../data/acoustic' # acoustic / elastic
-  wf_file: 'wf_slice_data.h5'
-  seis_file: 'seis_data.h5'
+  wf_file: 'wf_slice.h5'
+  seis_file: 'seis.h5'
   source_file: "elastic_source.h5"
-  interior_file: 'interior_slice_data.h5'
-  surface_file: 'surface_data.h5'
+  interior_file: 'interior.h5'
+  surface_file: 'surface.h5'
   dim: 3
   train_models: [0, 10]
   val_models: [0,2]
