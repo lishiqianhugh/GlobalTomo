@@ -33,33 +33,40 @@ def load_wf(h5f, model_ids, snapshot_ids, pred_key, data_type, source=None, test
     model_ids.sort()
     invar = {}
     outvar = {}
-    coords = h5f["element_coords_cartesian"][:,:,:]
-    if test:
-        invar['x'] = coords[None, :, :, 0].repeat(len(model_ids), 0).reshape(len(model_ids), -1)  / 1e3 # b, 16*3648
-        invar['y'] = coords[None, :, :, 1].repeat(len(model_ids), 0).reshape(len(model_ids), -1)  / 1e3 # b, 16*3648
-        invar['z'] = coords[None, :, :, 2].repeat(len(model_ids), 0).reshape(len(model_ids), -1)  / 1e3 # b, 16*3648
-        time = h5f['timestep']
-        invar['t'] = time[snapshot_ids][None, :].repeat(len(model_ids), axis=0)
- 
+
+    # Load structure and source data
     invar['h'] = h5f['harmonics'][model_ids]
     if source is not None:
         s = source['source'][model_ids] / 1e10 / 4e1
         invar['h'] = np.concatenate([invar['h'], s], axis=-1)
     
+    # Prepare output variables
     if 'X' in h5f.keys():
         outvar[pred_key] = h5f["X"][model_ids][:,snapshot_ids] * 1e5
     else:
         outvar[pred_key] = h5f["disp"][model_ids][:,snapshot_ids,:,:,2:] * 1e10
-        
+    
+    # Prepare spatial and temporal coordinates
+    coords = h5f["element_coords_cartesian"][:,:,:]
+
+    # Handle test-specific data
+    if test:
+        invar['x'] = coords[None, :, :, 0].repeat(len(model_ids), 0).reshape(len(model_ids), -1)  / coords.max() # b, 16*3648
+        invar['y'] = coords[None, :, :, 1].repeat(len(model_ids), 0).reshape(len(model_ids), -1)  / coords.max() # b, 16*3648
+        invar['z'] = coords[None, :, :, 2].repeat(len(model_ids), 0).reshape(len(model_ids), -1)  / coords.max() # b, 16*3648
+        time = h5f['timestep']
+        invar['t'] = time[snapshot_ids][None, :].repeat(len(model_ids), axis=0)
+    
+    # Handle different data types
     if data_type == 'vector':
         for key in invar.keys():
             invar[key] = invar[key].reshape(len(model_ids), -1)
         for key in outvar.keys():
             outvar[key] = outvar[key].reshape(len(model_ids), -1)
     elif data_type == 'point':
-        invar['x'] = coords[None, :, :, 0].repeat(len(model_ids), 0).reshape(len(model_ids), -1)  / 1e3 # b, 16*3648
-        invar['y'] = coords[None, :, :, 1].repeat(len(model_ids), 0).reshape(len(model_ids), -1)  / 1e3 # b, 16*3648
-        invar['z'] = coords[None, :, :, 2].repeat(len(model_ids), 0).reshape(len(model_ids), -1)  / 1e3 # b, 16*3648
+        invar['x'] = coords[None, :, :, 0].repeat(len(model_ids), 0).reshape(len(model_ids), -1)  / coords.max() # b, 16*3648
+        invar['y'] = coords[None, :, :, 1].repeat(len(model_ids), 0).reshape(len(model_ids), -1)  / coords.max() # b, 16*3648
+        invar['z'] = coords[None, :, :, 2].repeat(len(model_ids), 0).reshape(len(model_ids), -1)  / coords.max() # b, 16*3648
         time = h5f['timestep']
         invar['t'] = time[snapshot_ids][None, :].repeat(len(model_ids), axis=0) # b, 4
         for key in invar.keys():
@@ -72,7 +79,7 @@ def load_wf(h5f, model_ids, snapshot_ids, pred_key, data_type, source=None, test
     
     return invar, outvar
 
-def load_seis(h5f, model_ids, pred_key, data_type, norm=False, baseline=None, source=None, time_range=[0,150], transpose=True, test=False):
+def load_seis(h5f, model_ids, pred_key, data_type, norm=False, baseline=None, source=None, time_range=[0,150], interval=1, transpose=True, test=False):
     """
     Load seismic data from a given HDF5 file and prepare it for analysis based on specified parameters.
 
@@ -88,6 +95,7 @@ def load_seis(h5f, model_ids, pred_key, data_type, norm=False, baseline=None, so
         baseline (float, optional): A baseline value to be subtracted from the displacement data. Defaults to None.
         source (.h5, optional): An open HDF5 file object containing source data and related attributes. Defaults to None.
         time_range (list of int, optional): Indices to specify the time range of the data to load. Defaults to [0, 150].    
+        interval (int, optional): Interval to sample the time points. Defaults to 1.
         transpose (bool, optional): If True, transpose the output data to match the dimensions (batch, time, width, height). Defaults to True.
         test (bool, optional): If True, additional testing-specific data are loaded and processed. Defaults to False.
 
@@ -105,27 +113,19 @@ def load_seis(h5f, model_ids, pred_key, data_type, norm=False, baseline=None, so
     invar = {}
     outvar = {}
 
-    # Load basic data
-    sph_coords = h5f["station_coords_spherical"][:][None,:,:,:].repeat(len(model_ids), axis=0)
-    time = h5f["time"][time_range[0]:time_range[1]][None,:].repeat(len(model_ids), axis=0)
-    disp = h5f["disp"][model_ids][:,:,:,:,time_range[0]:time_range[1]]
-
-    # Handle test-specific data
-    if test:
-        car_coords = h5f["station_coords_cartesian"][:][None,:,:,:].repeat(len(model_ids), axis=0)
-        invar.update({
-            "x": car_coords[:,:,:,0] / 1e3,  # (b, 37, 37)
-            "y": car_coords[:,:,:,1] / 1e3,  # (b, 37, 37)
-            "z": car_coords[:,:,:,2] / 1e3,  # (b, 37, 37)
-            "xs": sph_coords[:,:,:,0],  # r
-            "ys": sph_coords[:,:,:,1] / np.pi,  # theta
-            "zs": sph_coords[:,:,:,2] / np.pi,  # phi
-            "t": time
-        })
-
-    # Prepare output variables based on prediction key
+    # Load structure and source data
+    invar['h'] = h5f['harmonics'][model_ids]
+    if source is not None:
+        s = source['source'][model_ids] / 1e10 / 4e1
+        invar['h'] = np.concatenate([invar['h'], s], axis=-1)
+    
+    # Prepare output variables
     key2idx = {'disp_x': 0, 'disp_y': 1, 'disp_z': 2}
-    outvar[pred_key] = disp[:,:,:,key2idx[pred_key]:,:] * 1e10
+    outvar[pred_key] = h5f["disp"][model_ids][:,:,:,key2idx[pred_key]:,time_range[0]:time_range[1]:interval] * 1e10
+
+    # Prepare spatial and temporal coordinates
+    sph_coords = h5f["station_coords_spherical"][:][None,:,:,:].repeat(len(model_ids), axis=0)
+    time = h5f["time"][time_range[0]:time_range[1]:interval][None,:].repeat(len(model_ids), axis=0)
 
     # Adjust baseline if necessary
     if baseline is not None:
@@ -135,19 +135,30 @@ def load_seis(h5f, model_ids, pred_key, data_type, norm=False, baseline=None, so
     if norm:
         max_value = np.max(np.abs(outvar[pred_key]), axis=-1)
         outvar[pred_key] /= max_value[:, :, :, :, None]
+        time /= time.max()
+        time *= 3
+
 
     # Transpose output to match dimensions (batch, time, width, height, channels)
     if transpose:
         outvar[pred_key] = outvar[pred_key].transpose(0, 4, 1, 2, 3)
-    
-    invar['h'] = h5f['harmonics'][model_ids]
-    if source is not None:
-        s = source['source'][model_ids] / 1e10 / 4e1
-        invar['h'] = np.concatenate([invar['h'], s], axis=-1)
+
+    # Handle test-specific data
+    if test:
+        car_coords = h5f["station_coords_cartesian"][:][None,:,:,:].repeat(len(model_ids), axis=0)
+        invar.update({
+            "x": car_coords[:,:,:,0] / car_coords.max(),  # (b, 37, 37)
+            "y": car_coords[:,:,:,1] / car_coords.max(),  # (b, 37, 37)
+            "z": car_coords[:,:,:,2] / car_coords.max(),  # (b, 37, 37)
+            "xs": sph_coords[:,:,:,0],  # r
+            "ys": sph_coords[:,:,:,1] / np.pi,  # theta
+            "zs": sph_coords[:,:,:,2] / np.pi,  # phi
+            "t": time
+        })
 
     # Handle different data types
     if data_type == 'vector':
-        t_size, w_size, h_size = time_range[1] - time_range[0], 37, 37
+        t_size, w_size, h_size = (time_range[1] - time_range[0])//interval, sph_coords.shape[1], sph_coords.shape[2]  # 37, 37
         for key in invar:
             if key not in ['t', 'h']:
                 invar[key] = np.repeat(invar[key][:,np.newaxis,:,:], t_size, axis=1)
@@ -158,11 +169,11 @@ def load_seis(h5f, model_ids, pred_key, data_type, norm=False, baseline=None, so
         for key in outvar:
             outvar[key] = outvar[key].reshape(len(model_ids), -1)
     elif data_type == 'point':
-        car_coords = h5f["station_coords_cartesian"][model_ids]
+        car_coords = h5f["station_coords_cartesian"][:][None,:,:,:].repeat(len(model_ids), axis=0)
         invar.update({
-            "x": car_coords[:,:,:,0] / 1e3,
-            "y": car_coords[:,:,:,1] / 1e3,
-            "z": car_coords[:,:,:,2] / 1e3,
+            "x": car_coords[:,:,:,0] / car_coords.max(),
+            "y": car_coords[:,:,:,1] / car_coords.max(),
+            "z": car_coords[:,:,:,2] / car_coords.max(),
             "t": time
         })
         for key in invar:

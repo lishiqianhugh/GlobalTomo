@@ -50,7 +50,7 @@ pip install -r requirements.txt
 ```
 
 ## Training forward models
-Define your training configuration files within the `conf` directory. For example configurations, refer to the YAML files in the repository. Typically, you should specify the data tier, model type, and desired output in these files. Ensure that the custom.name in your configuration matches the file name.
+Define your training configuration files within the `conf` directory. We provide example YAML files in the repository for an easy start. Typically, you should specify the data tier, model type, and desired output in these files. Ensure that the custom.name in your configuration matches the file name.
 
 To initiate training, execute the following command:
 
@@ -58,6 +58,7 @@ To initiate training, execute the following command:
 python train.py --config-name='acoustic_wfslice_MLP'
 ```
 Once training is complete, the checkpoints will be automatically stored in the `outputs` directory.
+Note that you can safely comment the `self._record_constraints()` in `anaconda/env/globaltomo/lib/python3.8/site-packages/modulus/sym/trainer.py` L607 to save time and avoid errors in training.
 
 ## Evaluating forward models
 Before evaluating the trained models, specify the `wave_type`, `output_type`, and `model_name` in `infer.py`.

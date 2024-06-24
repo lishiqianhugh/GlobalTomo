@@ -11,11 +11,11 @@ class WavePlotter(ValidatorPlotter):
         # filter invar to include only points y=0
         for key in invar.keys():
             if key in ["x", "y", "z"]:
-                invar[key] = invar[key].reshape(1, -1, 16, 3648)[0, 0].reshape(1,-1)
+                invar[key] = invar[key].reshape(1, 1, 16, -1)[0, 0].reshape(1,-1)
         for key in true_outvar.keys():
-            true_outvar[key] = true_outvar[key].reshape(1, -1, 16, 3648)[0, self.t].reshape(1,-1)
+            true_outvar[key] = true_outvar[key].reshape(1, invar['t'].shape[1], 16, -1)[0, self.t].reshape(1,-1)
         for key in pred_outvar.keys():
-            pred_outvar[key] = pred_outvar[key].reshape(1, -1, 16, 3648)[0, self.t].reshape(1,-1)
+            pred_outvar[key] = pred_outvar[key].reshape(1, invar['t'].shape[1], 16, -1)[0, self.t].reshape(1,-1)
         mask = np.abs(invar["y"]) ==0 # <=1e-6
         new_invar = {}
         new_true_outvar = {}

@@ -5,8 +5,6 @@ defaults :
   - /arch/fully_connected_cfg@arch.branch
   - /arch/fully_connected_cfg@arch.trunk
   - /arch/deeponet_cfg@arch.deeponet
-  - /arch/conv_fully_connected_cfg@arch.decoder
-  - /arch/fno_cfg@arch.fno
   - scheduler: tf_exponential_lr
   - optimizer: adam
   - loss: sum
@@ -15,21 +13,24 @@ defaults :
 custom:
   project: GlobalTomo
   name: 'elastic_seis_MLP'
-  model: 'MLP'  #  MLP / Fourier / HighwayFourier / FNO / ModDeepONet
-  data_dir: '../data/elastic' # acoustic / elastic
+  model: 'MLP'  #  MLP / Fourier / HighwayFourier / ModDeepONet
+  data_dir: '../data/elastic' # acoustic / elastic / earth
   wf_file: 'wf_slice/wf_slice_00000_01000.h5'
   seis_file: 'seis/seis_00000_01000.h5'
   source_file: "elastic_source.h5"
   interior_file: 'interior.h5'
   surface_file: 'surface.h5'
   dim: 3
-  train_models: [0, 10]
+  train_models: [0,10]
   val_models: [0,2]
   train_shots:  [1,3,5,7,9,11,13]
   val_shots: [1,3,5,7,9,11,13]
   num_slices: 16 
-  pred_key: disp_z # acoustic: phi / elastic: disp_z
-  lazy_loading: false  # load data from the disk for every batch
+  t_start: 0
+  t_end: 150
+  interval: 1
+  norm_seis: false
+  pred_key: disp_z # acoustic wavefield: phi
   wavefield: false
   seismogram: true
   velocity: false
@@ -43,7 +44,7 @@ arch:
   # MLP
   fully_connected:
     # seismogram
-    input_keys: ['hin', 1221] # acoustic: 405 elastic: 1221
+    input_keys: ['hin', 1221] # acoustic: 405 elastic: 1221  earth: 5427
     output_keys: ['disp_z', 205350]
     nr_layers: 6
     layer_size: 500
@@ -93,18 +94,6 @@ arch:
     output_keys: ['trunk', 1000]
   deeponet:
     output_keys: disp_z # phi
-  # FNO
-  decoder:
-    input_keys: [z, 32]
-    output_keys: [phi, 4]
-    nr_layers: 4
-    layer_size: 32
-  fno:
-    input_keys: [hin, 4]
-    dimension: 3
-    nr_fno_layers: 6
-    fno_modes: 9
-    padding: 0
 
 jit: True
 cuda_graphs: True # Graphs does not work with network with used leaf node

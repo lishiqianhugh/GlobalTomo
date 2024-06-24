@@ -175,63 +175,34 @@ def run(cfg: ModulusConfig) -> None:
             source = h5py.File(os.path.join(cfg.custom.data_dir, cfg.custom.source_file), "r")
         else:
             source = None
-        if cfg.custom.lazy_loading:
-            for m in val_models:
-                invar_seis_val, outvar_seis_val = load_seis(h5f, np.array([m]), pred_key, data_type, norm=False, 
-                                                            baseline=None, source=source, test=True)
-                seis_val = "Parallel_PointwiseValidator" if data_type == "point" else "PointwiseValidator" 
-                seis_l2 = eval(seis_val)(
-                    nodes=nodes,
-                    invar=invar_seis_val,
-                    true_outvar=outvar_seis_val,
-                    plotter=SeismoPlotter(),
-                    requires_grad=True,
-                )
-                domain.add_validator(seis_l2, f"seis_l2_{m:04d}")
-            dataset = HDF5GridDataset(
-                filename=cfg.custom.data_dir,
-                valid_idx=train_models,
-                invar_keys=["h"],
-                outvar_keys=[pred_key],
-                lambda_weighting={pred_key: cfg.custom.weight_seis},
-                data_type=data_type,
-            )
-            seis_constraint = "Parallel_LazyConstraint" if data_type == "point" else "LazyConstraint"
-            seis = eval(seis_constraint).from_numpy(
+        for m in val_models:
+            invar_seis_val, outvar_seis_val = load_seis(h5f, np.array([m]), pred_key, data_type, norm=cfg.custom.norm_seis, 
+                                                        baseline=None, source=source, time_range=[cfg.custom.t_start,cfg.custom.t_end], 
+                                                        interval=cfg.custom.interval, test=True)
+            seis_val = "Parallel_PointwiseValidator" if data_type == "point" else "PointwiseValidator" 
+            seis = eval(seis_val)(
                 nodes=nodes,
-                dataset=dataset,
-                batch_size=cfg.batch_size.seismogram,
-                loss=PointwiseLossNorm(),
-                num_workers=8,
+                invar=invar_seis_val,
+                true_outvar={pred_key: outvar_seis_val[pred_key]},
+                plotter=SeismoPlotter(),
+                requires_grad=True,
             )
-            domain.add_constraint(seis, f"seis")
-        else:
-            for m in val_models:
-                invar_seis_val, outvar_seis_val = load_seis(h5f, np.array([m]), pred_key, data_type, norm=False, 
-                                                            baseline=None, source=source, test=True)
-                seis_val = "Parallel_PointwiseValidator" if data_type == "point" else "PointwiseValidator" 
-                seis = eval(seis_val)(
-                    nodes=nodes,
-                    invar=invar_seis_val,
-                    true_outvar={pred_key: outvar_seis_val[pred_key]},
-                    plotter=SeismoPlotter(),
-                    requires_grad=True,
-                )
-                domain.add_validator(seis, f"seis_{m:04d}")
-            invar_seis, outvar_seis = load_seis(h5f, train_models, pred_key, data_type, norm=False, 
-                                                baseline=None, source=source, test=False)
-            # add seismogram constraint
-            seis_constraint = "Parallel_DeepONetConstraint" if data_type == "point" else "DeepONetConstraint"
-            seis = eval(seis_constraint).from_numpy(
-                nodes=nodes,
-                invar=invar_seis,
-                outvar={pred_key: outvar_seis[pred_key]},
-                batch_size=cfg.batch_size.seismogram,
-                num_workers=8,
-                loss=PointwiseLossNorm(),
-                lambda_weighting={pred_key: cfg.custom.weight_seis*np.ones_like(outvar_seis[pred_key])},
-            )
-            domain.add_constraint(seis, f"seis")
+            domain.add_validator(seis, f"seis_{m:04d}")
+        invar_seis, outvar_seis = load_seis(h5f, train_models, pred_key, data_type, norm=cfg.custom.norm_seis, 
+                                            baseline=None, source=source, time_range=[cfg.custom.t_start,cfg.custom.t_end], 
+                                            interval=cfg.custom.interval, test=False)
+        # add seismogram constraint
+        seis_constraint = "Parallel_DeepONetConstraint" if data_type == "point" else "DeepONetConstraint"
+        seis = eval(seis_constraint).from_numpy(
+            nodes=nodes,
+            invar=invar_seis,
+            outvar={pred_key: outvar_seis[pred_key]},
+            batch_size=cfg.batch_size.seismogram,
+            num_workers=8,
+            loss=PointwiseLossNorm(),
+            lambda_weighting={pred_key: cfg.custom.weight_seis*np.ones_like(outvar_seis[pred_key])},
+        )
+        domain.add_constraint(seis, f"seis")
 
     if cfg.custom.velocity:
         print("###### Use seismogram ######")
@@ -241,7 +212,7 @@ def run(cfg: ModulusConfig) -> None:
         else:
             source = None
         for m in val_models:
-            invar_seis_new, outvar_seis_new = load_seis(h5f, np.array([m]), pred_key, data_type, norm=True, baseline=None, transpose=False, test=True)
+            invar_seis_new, outvar_seis_new = load_seis(h5f, np.array([m]), pred_key, data_type, norm=cfg.custom.norm_seis, baseline=None, transpose=False, test=True)
             seis_val = "Parallel_PointwiseValidator" if data_type == "point" else "PointwiseValidator" 
             seis = eval(seis_val)(
                 nodes=nodes,
@@ -251,7 +222,7 @@ def run(cfg: ModulusConfig) -> None:
                 requires_grad=True,
             )
             domain.add_validator(seis, f"seis_{m:04d}")
-        invar_seis, outvar_seis = load_seis(h5f, train_models, pred_key, data_type, norm=True, baseline=None, transpose=False, test=False)
+        invar_seis, outvar_seis = load_seis(h5f, train_models, pred_key, data_type, norm=cfg.custom.norm_seis, baseline=None, transpose=False, test=False)
         # add seismogram constraint
         seis_constraint = "Parallel_DeepONetConstraint" if data_type == "point" else "DeepONetConstraint"
         seis = eval(seis_constraint).from_numpy(

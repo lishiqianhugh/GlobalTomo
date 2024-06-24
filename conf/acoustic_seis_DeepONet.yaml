@@ -12,8 +12,8 @@ defaults :
 
 custom:
   project: GlobalTomo
-  name: 'acoustic_wfslice_MLP'
-  model: 'MLP'  #  MLP / Fourier / HighwayFourier / ModDeepONet
+  name: 'acoustic_seis_DeepONet'
+  model: 'ModDeepONet'  #  MLP / Fourier / HighwayFourier / ModDeepONet
   data_dir: '../data/acoustic' # acoustic / elastic / earth
   wf_file: 'wf_slice.h5'
   seis_file: 'seis.h5'
@@ -21,7 +21,7 @@ custom:
   interior_file: 'interior.h5'
   surface_file: 'surface.h5'
   dim: 3
-  train_models: [0,10]
+  train_models: [0,2]
   val_models: [0,2]
   train_shots:  [1,3,5,7,9,11,13]
   val_shots: [1,3,5,7,9,11,13]
@@ -30,9 +30,9 @@ custom:
   t_end: 150
   interval: 1
   norm_seis: false
-  pred_key: phi # acoustic wavefield: phi
-  wavefield: true
-  seismogram: false
+  pred_key: disp_z # acoustic wavefield: phi
+  wavefield: false
+  seismogram: true
   velocity: false
   interior: false
   surface: false
@@ -43,16 +43,16 @@ custom:
 arch:
   # MLP
   fully_connected:
-    # # seismogram
-    # input_keys: ['hin', 405] # acoustic: 405 elastic: 1221  earth: 5427
-    # output_keys: ['disp_z', 205350]
-    # nr_layers: 6
-    # layer_size: 500
-    # wavefield
-    input_keys: ['hin', 405]
-    output_keys: ['phi', 408576]
+    # seismogram
+    input_keys: ['hin', 405] # acoustic: 405 elastic: 1221 earth: 5427
+    output_keys: ['disp_z', 205350]
     nr_layers: 6
     layer_size: 500
+    # # wavefield
+    # input_keys: ['hin', 405]
+    # output_keys: ['phi', 408576]
+    # nr_layers: 6
+    # layer_size: 500
     # # velocity
     # input_keys: ['disp_z', 205350]
     # output_keys: ['h', 405]
