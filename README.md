@@ -5,8 +5,8 @@ The first global dataset for physics-ML seismic wavefield modeling and full-wave
     <a href='https://global-tomo.github.io/'>
     <img src='https://img.shields.io/badge/Web-Page-yellow?style=plastic&logo=Google%20chrome&logoColor=yellow' alt='Web'>
     </a>
-    <a href='https://forms.gle/wC1mLULDmoQYpugo8'>
-    <img src='https://img.shields.io/badge/Data-Form-blue?style=plastic&logo=Google%20chrome&logoColor=blue' alt='Data'>
+    <a href='https://huggingface.co/datasets/lishiqianhugh/globaltomo'>
+    <img src='https://img.shields.io/badge/Data-Huggingface-blue?style=plastic&logo=Google%20chrome&logoColor=blue' alt='Data'>
     </a>
     <a href='https://vimeo.com/957588046'>
       <img src='https://img.shields.io/badge/Demo-Vimeo-red?style=plastic&logo=Vimeo&logoColor=red' alt='Demo'>
@@ -81,5 +81,5 @@ An alternative strategy is to train a neural network that directly maps the obse
 python train.py --config-name='acoustic_velocity_MLP'
 ```
 ## Download the data
-To access the data, please click this <a href="https://forms.gle/wC1mLULDmoQYpugo8">link</a> and fill the request form.
+To access the data, please click this <a href="https://huggingface.co/datasets/lishiqianhugh/globaltomo">link</a>.
 
